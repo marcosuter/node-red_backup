@@ -1,0 +1,12 @@
+{
+    "name": "node-red_backup",
+    "description": "Ein Node-RED-Projekt",
+    "version": "0.0.1",
+    "dependencies": {},
+    "node-red": {
+        "settings": {
+            "flowFile": "flows_backupmanager.json",
+            "credentialsFile": "flows_backupmanager_cred.json"
+        }
+    }
+}
