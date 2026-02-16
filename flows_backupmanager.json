@@ -4996,8 +4996,8 @@
         "winHide": false,
         "oldrc": false,
         "name": "",
-        "x": 1540,
-        "y": 480,
+        "x": 1520,
+        "y": 500,
         "wires": [
             [
                 "1aa3e8b6b78e684d"
