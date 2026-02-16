@@ -5403,7 +5403,7 @@
         "type": "function",
         "z": "b7e2dbf3f8a0d2d1",
         "name": "SQL: fw pro Sensor",
-        "func": "// Build SQL params (All sensors fw) – vor dem SQL Node\n// setzt startLocal und liefert die Parameter 3× (für STR_TO_DATE im Query)\n\nconst now = new Date();\nconst pad = n => String(n).padStart(2, \"0\");\nconst day = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;\nconst startLocal = `${day} 00:00:00`;\n\n// Dein SQL Query in msg.topic (füge hier exakt das Stunden-Query ein)\nmsg.topic = `\nSELECT\n  DATE_FORMAT(DATE_ADD(STR_TO_DATE(?, '%Y-%m-%d %H:%i:%s'), INTERVAL hrs.n HOUR), '%H:00') AS x_label,\n  s.sensor_id,\n  s.name AS sensor_name,\n  SUM(COALESCE(w.fw,0)) AS fw_sum\nFROM (\n  SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5\n  UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10 UNION ALL SELECT 11\n  UNION ALL SELECT 12 UNION ALL SELECT 13 UNION ALL SELECT 14 UNION ALL SELECT 15 UNION ALL SELECT 16 UNION ALL SELECT 17\n  UNION ALL SELECT 18 UNION ALL SELECT 19 UNION ALL SELECT 20 UNION ALL SELECT 21 UNION ALL SELECT 22 UNION ALL SELECT 23\n) hrs\nJOIN xovis_sensors s\n  ON s.mail_enabled > 0\nLEFT JOIN xovis_counts_wide w\n  ON w.resolution_min = 1\n AND (\n      w.sensor_id = s.sensor_id\n      OR w.sensor_id LIKE CONCAT(s.sensor_id, '\\\\\\\\_%') ESCAPE '\\\\\\\\'\n )\n AND w.bin_begin_utc >= CONVERT_TZ(\n       DATE_ADD(STR_TO_DATE(?, '%Y-%m-%d %H:%i:%s'), INTERVAL hrs.n HOUR),\n       'Europe/Zurich', 'UTC'\n )\n AND w.bin_begin_utc <  CONVERT_TZ(\n       DATE_ADD(STR_TO_DATE(?, '%Y-%m-%d %H:%i:%s'), INTERVAL hrs.n + 1 HOUR),\n       'Europe/Zurich', 'UTC'\n )\nGROUP BY hrs.n, s.sensor_id, s.name\nORDER BY hrs.n, s.name;\n`.trim();\n\n// Parameter: startLocal wird 3× gebraucht (siehe Query)\nmsg.payload = [startLocal, startLocal, startLocal];\n\n// Für Mail-Betreff (optional)\nmsg.report_subject = msg.report_subject || \"XOVIS – Alle Sensoren (fw) – Stundenwerte\";\nmsg.report_type = \"all_sensors_fw_hours\";\n\nreturn msg;\n",
+        "func": "// Build SQL params (All sensors fw) – Tag / 14 Tage / 52 Wochen\n// Output:\n//   msg.topic   = SQL\n//   msg.payload = params (strings)\n//   msg.report_subject optional\n//   msg.report_type required\n\nconst rt = msg.report_type || \"day_hours\";\n\n// startLocal: heute 00:00:00 (Europe/Zurich als String)\nconst now = new Date();\nconst pad = n => String(n).padStart(2, \"0\");\nconst day = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;\nconst startLocal = `${day} 00:00:00`;\n\n// stacked toggle ans Chart-JSON weiterreichen (optional)\nmsg.chart_stacked = (msg.chart_stacked === true);\n\n// --- TAG: 24 Stunden ---\nif (rt === \"day_hours\") {\n  msg.topic = `\nSELECT\n  DATE_FORMAT(DATE_ADD(STR_TO_DATE(?, '%Y-%m-%d %H:%i:%s'), INTERVAL hrs.n HOUR), '%H:00') AS x_label,\n  s.sensor_id,\n  s.name AS sensor_name,\n  SUM(COALESCE(w.fw,0)) AS fw_sum\nFROM (\n  SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5\n  UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10 UNION ALL SELECT 11\n  UNION ALL SELECT 12 UNION ALL SELECT 13 UNION ALL SELECT 14 UNION ALL SELECT 15 UNION ALL SELECT 16 UNION ALL SELECT 17\n  UNION ALL SELECT 18 UNION ALL SELECT 19 UNION ALL SELECT 20 UNION ALL SELECT 21 UNION ALL SELECT 22 UNION ALL SELECT 23\n) hrs\nJOIN xovis_sensors s ON s.mail_enabled > 0\nLEFT JOIN xovis_counts_wide w\n  ON w.resolution_min = 1\n AND (\n      w.sensor_id = s.sensor_id\n      OR w.sensor_id LIKE CONCAT(s.sensor_id, '\\\\\\\\_%') ESCAPE '\\\\\\\\'\n )\n AND w.bin_begin_utc >= CONVERT_TZ(\n       DATE_ADD(STR_TO_DATE(?, '%Y-%m-%d %H:%i:%s'), INTERVAL hrs.n HOUR),\n       'Europe/Zurich', 'UTC'\n )\n AND w.bin_begin_utc <  CONVERT_TZ(\n       DATE_ADD(STR_TO_DATE(?, '%Y-%m-%d %H:%i:%s'), INTERVAL hrs.n + 1 HOUR),\n       'Europe/Zurich', 'UTC'\n )\nGROUP BY hrs.n, s.sensor_id, s.name\nORDER BY hrs.n, s.name;\n`.trim();\n\n  // startLocal wird 3× gebraucht\n  msg.payload = [startLocal, startLocal, startLocal];\n  return msg;\n}\n\n// --- 14 TAGE: Tageswerte (14 Balken) ---\nif (rt === \"days_14\") {\n  msg.topic = `\nSELECT\n  DATE_FORMAT(DATE_ADD(STR_TO_DATE(?, '%Y-%m-%d %H:%i:%s'), INTERVAL d.n DAY), '%d.%m') AS x_label,\n  s.sensor_id,\n  s.name AS sensor_name,\n  SUM(COALESCE(w.fw,0)) AS fw_sum\nFROM (\n  SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5\n  UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10 UNION ALL SELECT 11\n  UNION ALL SELECT 12 UNION ALL SELECT 13\n) d\nJOIN xovis_sensors s ON s.mail_enabled > 0\nLEFT JOIN xovis_counts_wide w\n  ON w.resolution_min = 1\n AND (\n      w.sensor_id = s.sensor_id\n      OR w.sensor_id LIKE CONCAT(s.sensor_id, '\\\\\\\\_%') ESCAPE '\\\\\\\\'\n )\n AND w.bin_begin_utc >= CONVERT_TZ(\n       DATE_ADD(STR_TO_DATE(?, '%Y-%m-%d %H:%i:%s'), INTERVAL d.n DAY),\n       'Europe/Zurich', 'UTC'\n )\n AND w.bin_begin_utc <  CONVERT_TZ(\n       DATE_ADD(STR_TO_DATE(?, '%Y-%m-%d %H:%i:%s'), INTERVAL d.n + 1 DAY),\n       'Europe/Zurich', 'UTC'\n )\nGROUP BY d.n, s.sensor_id, s.name\nORDER BY d.n, s.name;\n`.trim();\n\n  // Start = heute-13 Tage, damit die 14 Werte bis heute laufen\n  // Wir setzen im SQL d.n=0..13 auf diesen Start.\n  // Also: startLocal14 = (heute 00:00:00) - 13 Tage\n  msg.payload = [\n    startLocal, // wird gleich in SQL als Basis genutzt, aber wir müssen -13 Tage einbauen:\n    startLocal,\n    startLocal\n  ];\n\n  // Trick: Basisdatum in SQL um 13 Tage zurückziehen, ohne CTE:\n  // -> wir ersetzen STR_TO_DATE(?) im Query durch DATE_SUB(STR_TO_DATE(?), INTERVAL 13 DAY)\n  msg.topic = msg.topic.replace(\n    /STR_TO_DATE\\(\\?, '%Y-%m-%d %H:%i:%s'\\)/g,\n    \"DATE_SUB(STR_TO_DATE(?, '%Y-%m-%d %H:%i:%s'), INTERVAL 13 DAY)\"\n  );\n\n  return msg;\n}\n\n// --- 52 WOCHEN: Wochenwerte (52 Balken) ---\nif (rt === \"weeks_52\") {\n  msg.topic = `\nSELECT\n  CONCAT('KW ', LPAD(WEEK(DATE_ADD(STR_TO_DATE(?, '%Y-%m-%d %H:%i:%s'), INTERVAL w.n WEEK), 3), 2, '0')) AS x_label,\n  s.sensor_id,\n  s.name AS sensor_name,\n  SUM(COALESCE(wd.fw,0)) AS fw_sum\nFROM (\n  SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5\n  UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10 UNION ALL SELECT 11\n  UNION ALL SELECT 12 UNION ALL SELECT 13 UNION ALL SELECT 14 UNION ALL SELECT 15 UNION ALL SELECT 16 UNION ALL SELECT 17\n  UNION ALL SELECT 18 UNION ALL SELECT 19 UNION ALL SELECT 20 UNION ALL SELECT 21 UNION ALL SELECT 22 UNION ALL SELECT 23\n  UNION ALL SELECT 24 UNION ALL SELECT 25 UNION ALL SELECT 26 UNION ALL SELECT 27 UNION ALL SELECT 28 UNION ALL SELECT 29\n  UNION ALL SELECT 30 UNION ALL SELECT 31 UNION ALL SELECT 32 UNION ALL SELECT 33 UNION ALL SELECT 34 UNION ALL SELECT 35\n  UNION ALL SELECT 36 UNION ALL SELECT 37 UNION ALL SELECT 38 UNION ALL SELECT 39 UNION ALL SELECT 40 UNION ALL SELECT 41\n  UNION ALL SELECT 42 UNION ALL SELECT 43 UNION ALL SELECT 44 UNION ALL SELECT 45 UNION ALL SELECT 46 UNION ALL SELECT 47\n  UNION ALL SELECT 48 UNION ALL SELECT 49 UNION ALL SELECT 50 UNION ALL SELECT 51\n) w\nJOIN xovis_sensors s ON s.mail_enabled > 0\nLEFT JOIN xovis_counts_wide wd\n  ON wd.resolution_min = 1\n AND (\n      wd.sensor_id = s.sensor_id\n      OR wd.sensor_id LIKE CONCAT(s.sensor_id, '\\\\\\\\_%') ESCAPE '\\\\\\\\'\n )\n AND wd.bin_begin_utc >= CONVERT_TZ(\n       DATE_ADD(STR_TO_DATE(?, '%Y-%m-%d %H:%i:%s'), INTERVAL w.n WEEK),\n       'Europe/Zurich', 'UTC'\n )\n AND wd.bin_begin_utc <  CONVERT_TZ(\n       DATE_ADD(STR_TO_DATE(?, '%Y-%m-%d %H:%i:%s'), INTERVAL w.n + 1 WEEK),\n       'Europe/Zurich', 'UTC'\n )\nGROUP BY w.n, s.sensor_id, s.name\nORDER BY w.n, s.name;\n`.trim();\n\n  // Basisdatum = Montag dieser Woche - 51 Wochen.\n  // Wir nehmen \"heute 00:00\" und rechnen im SQL zurück auf Montag und -51 Wochen:\n  // -> Replace STR_TO_DATE(?) im ersten Label-Ausdruck nicht, sondern wir machen es überall gleich:\n  msg.topic = msg.topic.replace(\n    /STR_TO_DATE\\(\\?, '%Y-%m-%d %H:%i:%s'\\)/g,\n    \"DATE_SUB(DATE_SUB(STR_TO_DATE(?, '%Y-%m-%d %H:%i:%s'), INTERVAL WEEKDAY(DATE(STR_TO_DATE(?, '%Y-%m-%d %H:%i:%s'))) DAY), INTERVAL 51 WEEK)\"\n  );\n\n  // Weil wir jetzt 2 Platzhalter pro Ersetzung haben, brauchen wir genügend params:\n  // In diesem Query kommt STR_TO_DATE(?) 3x vor -> nach replace wird es 3x zu ( ... ?, ? ...)\n  // => total 6 params\n  msg.payload = [startLocal, startLocal, startLocal, startLocal, startLocal, startLocal];\n\n  return msg;\n}\n\n// unknown\nnode.warn(\"Unknown report_type: \" + rt);\nreturn null;\n",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -5437,7 +5437,7 @@
         "type": "function",
         "z": "b7e2dbf3f8a0d2d1",
         "name": "Rows → chart input",
-        "func": "// Rows → chart input (multi-dataset), nur fw\n// Erwartet rows: [{x_label, sensor_id, sensor_name, fw_sum}, ...]\n// Output: msg.payload = {labels, datasets, title}\n\nconst rows = Array.isArray(msg.payload) ? msg.payload : [];\nconst toNum = v => {\n  const n = Number(v);\n  return Number.isFinite(n) ? n : 0;\n};\n\n// Labels in Reihenfolge (unique)\nconst labels = [];\nconst labelSet = new Set();\nfor (const r of rows) {\n  const x = String(r.x_label ?? \"\").trim();\n  if (x && !labelSet.has(x)) {\n    labelSet.add(x);\n    labels.push(x);\n  }\n}\n\n// Sensorliste (unique) – Reihenfolge wie im Resultset (ORDER BY s.name)\nconst sensors = [];\nconst sensorSet = new Set();\nfor (const r of rows) {\n  const id = String(r.sensor_id ?? \"\").trim();\n  if (id && !sensorSet.has(id)) {\n    sensorSet.add(id);\n    sensors.push({\n      sensor_id: id,\n      sensor_name: String(r.sensor_name ?? id).trim()\n    });\n  }\n}\n\n// Werte-Matrix: sensor_id -> Map(x_label -> fw)\nconst valMap = new Map();\nfor (const s of sensors) valMap.set(s.sensor_id, new Map());\n\nfor (const r of rows) {\n  const id = String(r.sensor_id ?? \"\").trim();\n  const x  = String(r.x_label ?? \"\").trim();\n  if (!id || !x) continue;\n  valMap.get(id)?.set(x, toNum(r.fw_sum));\n}\n\n// Datasets bauen (nur fw)\nconst datasets = sensors.map(s => ({\n  label: s.sensor_name + \" fw\",\n  data: labels.map(x => valMap.get(s.sensor_id)?.get(x) ?? 0)\n}));\n\nmsg.payload = {\n  labels,\n  datasets,\n  title: \"Alle Sensoren (fw) – Stundenwerte\",\n  stacked: false   // <-- false = nebeneinander, true = gestapelt\n};\n\nreturn msg;\n",
+        "func": "// Rows → chart input (multi-dataset), nur fw\n// Erwartet rows: [{x_label, sensor_id, sensor_name, fw_sum}, ...]\n// Output: msg.payload = {labels, datasets, title}\n\nconst rows = Array.isArray(msg.payload) ? msg.payload : [];\nconst toNum = v => {\n  const n = Number(v);\n  return Number.isFinite(n) ? n : 0;\n};\n\n// Labels in Reihenfolge (unique)\nconst labels = [];\nconst labelSet = new Set();\nfor (const r of rows) {\n  const x = String(r.x_label ?? \"\").trim();\n  if (x && !labelSet.has(x)) {\n    labelSet.add(x);\n    labels.push(x);\n  }\n}\n\n// Sensorliste (unique) – Reihenfolge wie im Resultset (ORDER BY s.name)\nconst sensors = [];\nconst sensorSet = new Set();\nfor (const r of rows) {\n  const id = String(r.sensor_id ?? \"\").trim();\n  if (id && !sensorSet.has(id)) {\n    sensorSet.add(id);\n    sensors.push({\n      sensor_id: id,\n      sensor_name: String(r.sensor_name ?? id).trim()\n    });\n  }\n}\n\n// Werte-Matrix: sensor_id -> Map(x_label -> fw)\nconst valMap = new Map();\nfor (const s of sensors) valMap.set(s.sensor_id, new Map());\n\nfor (const r of rows) {\n  const id = String(r.sensor_id ?? \"\").trim();\n  const x  = String(r.x_label ?? \"\").trim();\n  if (!id || !x) continue;\n  valMap.get(id)?.set(x, toNum(r.fw_sum));\n}\n\n// Datasets bauen (nur fw)\nconst datasets = sensors.map(s => ({\n  label: s.sensor_name + \" fw\",\n  data: labels.map(x => valMap.get(s.sensor_id)?.get(x) ?? 0)\n}));\n\nmsg.payload = {\n  labels,\n  datasets,\n  title: \"Alle Sensoren (fw)\",\n  stacked: (msg.chart_stacked === true)  // <-- Umschalten per Inject\n};\nreturn msg;\n\n",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -5591,7 +5591,7 @@
         "type": "function",
         "z": "b7e2dbf3f8a0d2d1",
         "name": "function 14",
-        "func": "msg.report_type = \"day_hours\";          // 24 Punkte\nmsg.report_subject = \"XOVIS Tagesverlauf (heute)\";\nreturn msg;\n",
+        "func": "msg.report_type = \"day_hours\";          // 24 Punkte\nmsg.report_subject = \"XOVIS Tagesverlauf (heute)\";\nmsg.chart_stacked = true;\nreturn msg;\n",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -5637,5 +5637,103 @@
         "x": 1740,
         "y": 1160,
         "wires": []
+    },
+    {
+        "id": "2c36adec76f11149",
+        "type": "inject",
+        "z": "b7e2dbf3f8a0d2d1",
+        "name": "2 Wochen",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 580,
+        "y": 1220,
+        "wires": [
+            [
+                "deb5972d01e2692b"
+            ]
+        ]
+    },
+    {
+        "id": "deb5972d01e2692b",
+        "type": "function",
+        "z": "b7e2dbf3f8a0d2d1",
+        "name": "function 15",
+        "func": "msg.report_type = \"days_14\";            // 14 Punkte\nmsg.report_subject = \"XOVIS Tageswerte (letzte 14 Tage)\";\nmsg.chart_stacked = true;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 730,
+        "y": 1220,
+        "wires": [
+            [
+                "3da18c2aba8a788e"
+            ]
+        ]
+    },
+    {
+        "id": "620f7773930df68d",
+        "type": "inject",
+        "z": "b7e2dbf3f8a0d2d1",
+        "name": "1 Jahr",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 570,
+        "y": 1260,
+        "wires": [
+            [
+                "b915995d63b061de"
+            ]
+        ]
+    },
+    {
+        "id": "b915995d63b061de",
+        "type": "function",
+        "z": "b7e2dbf3f8a0d2d1",
+        "name": "function 16",
+        "func": "msg.report_type = \"weeks_52\";           // 52 Punkte\nmsg.report_subject = \"XOVIS Wochenwerte (letzte 12 Monate)\";\nmsg.chart_stacked = true;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 730,
+        "y": 1260,
+        "wires": [
+            [
+                "3da18c2aba8a788e"
+            ]
+        ]
     }
 ]
