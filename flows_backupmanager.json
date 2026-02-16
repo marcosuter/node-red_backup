@@ -4936,8 +4936,8 @@
         "z": "b7e2dbf3f8a0d2d1",
         "mydb": "19ca401d8e6b23b0",
         "name": "",
-        "x": 770,
-        "y": 680,
+        "x": 990,
+        "y": 660,
         "wires": [
             [
                 "f853c5f83f4b7f81"
@@ -4956,8 +4956,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 760,
-        "y": 620,
+        "x": 920,
+        "y": 600,
         "wires": [
             [
                 "1acfd38dc2112c2b"
@@ -4976,8 +4976,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 830,
-        "y": 780,
+        "x": 950,
+        "y": 720,
         "wires": [
             [
                 "858b0a0a802e1489"
@@ -5038,8 +5038,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1330,
-        "y": 940,
+        "x": 990,
+        "y": 1020,
         "wires": [
             [
                 "6ebc6030284b70b5"
@@ -5057,8 +5057,8 @@
         "createDir": false,
         "overwriteFile": "true",
         "encoding": "utf8",
-        "x": 1540,
-        "y": 940,
+        "x": 1100,
+        "y": 1080,
         "wires": [
             [
                 "2ca720beeed85994"
@@ -5144,8 +5144,8 @@
         "stream": false,
         "addname": "",
         "property": "payload",
-        "x": 830,
-        "y": 860,
+        "x": 990,
+        "y": 780,
         "wires": [
             [
                 "384f4424af8d406a"
@@ -5164,8 +5164,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 910,
-        "y": 960,
+        "x": 950,
+        "y": 840,
         "wires": [
             [
                 "1b1e0b302224a011"
@@ -5178,8 +5178,8 @@
         "z": "b7e2dbf3f8a0d2d1",
         "mydb": "19ca401d8e6b23b0",
         "name": "",
-        "x": 1090,
-        "y": 960,
+        "x": 990,
+        "y": 900,
         "wires": [
             [
                 "a357c6db6ffde427"
@@ -5243,8 +5243,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1210,
-        "y": 860,
+        "x": 950,
+        "y": 960,
         "wires": [
             [
                 "db148ae39f0f578a"
@@ -5255,7 +5255,7 @@
         "id": "4101706a0fbeb301",
         "type": "inject",
         "z": "b7e2dbf3f8a0d2d1",
-        "name": "",
+        "name": "1 Jahr",
         "props": [
             {
                 "p": "payload"
@@ -5272,7 +5272,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 580,
+        "x": 570,
         "y": 1100,
         "wires": [
             [
@@ -5284,7 +5284,7 @@
         "id": "bf15cf94e55fcc96",
         "type": "inject",
         "z": "b7e2dbf3f8a0d2d1",
-        "name": "",
+        "name": "1 Tag",
         "props": [
             {
                 "p": "payload"
@@ -5301,7 +5301,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 580,
+        "x": 570,
         "y": 1020,
         "wires": [
             [
@@ -5313,7 +5313,7 @@
         "id": "bd391723c6f65b44",
         "type": "inject",
         "z": "b7e2dbf3f8a0d2d1",
-        "name": "",
+        "name": "2 Wochen",
         "props": [
             {
                 "p": "payload"
@@ -5397,5 +5397,245 @@
                 "a2110185c7630bcd"
             ]
         ]
+    },
+    {
+        "id": "3da18c2aba8a788e",
+        "type": "function",
+        "z": "b7e2dbf3f8a0d2d1",
+        "name": "SQL: fw pro Sensor",
+        "func": "// Build SQL params (All sensors fw) – vor dem SQL Node\n// setzt startLocal und liefert die Parameter 3× (für STR_TO_DATE im Query)\n\nconst now = new Date();\nconst pad = n => String(n).padStart(2, \"0\");\nconst day = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;\nconst startLocal = `${day} 00:00:00`;\n\n// Dein SQL Query in msg.topic (füge hier exakt das Stunden-Query ein)\nmsg.topic = `\nSELECT\n  DATE_FORMAT(DATE_ADD(STR_TO_DATE(?, '%Y-%m-%d %H:%i:%s'), INTERVAL hrs.n HOUR), '%H:00') AS x_label,\n  s.sensor_id,\n  s.name AS sensor_name,\n  SUM(COALESCE(w.fw,0)) AS fw_sum\nFROM (\n  SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5\n  UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10 UNION ALL SELECT 11\n  UNION ALL SELECT 12 UNION ALL SELECT 13 UNION ALL SELECT 14 UNION ALL SELECT 15 UNION ALL SELECT 16 UNION ALL SELECT 17\n  UNION ALL SELECT 18 UNION ALL SELECT 19 UNION ALL SELECT 20 UNION ALL SELECT 21 UNION ALL SELECT 22 UNION ALL SELECT 23\n) hrs\nJOIN xovis_sensors s\n  ON s.mail_enabled > 0\nLEFT JOIN xovis_counts_wide w\n  ON w.resolution_min = 1\n AND (\n      w.sensor_id = s.sensor_id\n      OR w.sensor_id LIKE CONCAT(s.sensor_id, '\\\\\\\\_%') ESCAPE '\\\\\\\\'\n )\n AND w.bin_begin_utc >= CONVERT_TZ(\n       DATE_ADD(STR_TO_DATE(?, '%Y-%m-%d %H:%i:%s'), INTERVAL hrs.n HOUR),\n       'Europe/Zurich', 'UTC'\n )\n AND w.bin_begin_utc <  CONVERT_TZ(\n       DATE_ADD(STR_TO_DATE(?, '%Y-%m-%d %H:%i:%s'), INTERVAL hrs.n + 1 HOUR),\n       'Europe/Zurich', 'UTC'\n )\nGROUP BY hrs.n, s.sensor_id, s.name\nORDER BY hrs.n, s.name;\n`.trim();\n\n// Parameter: startLocal wird 3× gebraucht (siehe Query)\nmsg.payload = [startLocal, startLocal, startLocal];\n\n// Für Mail-Betreff (optional)\nmsg.report_subject = msg.report_subject || \"XOVIS – Alle Sensoren (fw) – Stundenwerte\";\nmsg.report_type = \"all_sensors_fw_hours\";\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 970,
+        "y": 1160,
+        "wires": [
+            [
+                "edf35f82fbec4f80"
+            ]
+        ]
+    },
+    {
+        "id": "edf35f82fbec4f80",
+        "type": "mysql",
+        "z": "b7e2dbf3f8a0d2d1",
+        "mydb": "19ca401d8e6b23b0",
+        "name": "",
+        "x": 1010,
+        "y": 1220,
+        "wires": [
+            [
+                "ea1816fdfda5563b"
+            ]
+        ]
+    },
+    {
+        "id": "ea1816fdfda5563b",
+        "type": "function",
+        "z": "b7e2dbf3f8a0d2d1",
+        "name": "Rows → chart input",
+        "func": "// Rows → chart input (multi-dataset), nur fw\n// Erwartet rows: [{x_label, sensor_id, sensor_name, fw_sum}, ...]\n// Output: msg.payload = {labels, datasets, title}\n\nconst rows = Array.isArray(msg.payload) ? msg.payload : [];\nconst toNum = v => {\n  const n = Number(v);\n  return Number.isFinite(n) ? n : 0;\n};\n\n// Labels in Reihenfolge (unique)\nconst labels = [];\nconst labelSet = new Set();\nfor (const r of rows) {\n  const x = String(r.x_label ?? \"\").trim();\n  if (x && !labelSet.has(x)) {\n    labelSet.add(x);\n    labels.push(x);\n  }\n}\n\n// Sensorliste (unique) – Reihenfolge wie im Resultset (ORDER BY s.name)\nconst sensors = [];\nconst sensorSet = new Set();\nfor (const r of rows) {\n  const id = String(r.sensor_id ?? \"\").trim();\n  if (id && !sensorSet.has(id)) {\n    sensorSet.add(id);\n    sensors.push({\n      sensor_id: id,\n      sensor_name: String(r.sensor_name ?? id).trim()\n    });\n  }\n}\n\n// Werte-Matrix: sensor_id -> Map(x_label -> fw)\nconst valMap = new Map();\nfor (const s of sensors) valMap.set(s.sensor_id, new Map());\n\nfor (const r of rows) {\n  const id = String(r.sensor_id ?? \"\").trim();\n  const x  = String(r.x_label ?? \"\").trim();\n  if (!id || !x) continue;\n  valMap.get(id)?.set(x, toNum(r.fw_sum));\n}\n\n// Datasets bauen (nur fw)\nconst datasets = sensors.map(s => ({\n  label: s.sensor_name + \" fw\",\n  data: labels.map(x => valMap.get(s.sensor_id)?.get(x) ?? 0)\n}));\n\nmsg.payload = {\n  labels,\n  datasets,\n  title: \"Alle Sensoren (fw) – Stundenwerte\",\n  stacked: false   // <-- false = nebeneinander, true = gestapelt\n};\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1090,
+        "y": 1300,
+        "wires": [
+            [
+                "848f6fa3a37c8b60"
+            ]
+        ]
+    },
+    {
+        "id": "848f6fa3a37c8b60",
+        "type": "function",
+        "z": "b7e2dbf3f8a0d2d1",
+        "name": "Chart JSON → File Prep",
+        "func": "// Chart JSON → File Prep (Function) – Multi-Dataset kompatibel\n// Input:  msg.payload = { labels: [...], datasets: [...], title: \"...\" }\n// Output: msg.filename (für Write File), msg.chartFile merken, msg.payload = JSON-String\n\nconst chartObj = msg.payload;\n\nif (!chartObj || typeof chartObj !== \"object\") {\n  node.warn(\"Chart JSON missing/invalid\");\n  return null;\n}\n\n// JSON serialisieren\nconst json = JSON.stringify(chartObj);\n\n// eindeutiger tmp-Dateiname\nconst ts = Date.now();\nconst rnd = Math.floor(Math.random() * 1e6);\n\n// optional: report_type in filename (z.B. day_hours/days_14/weeks_52)\nconst rt = (msg.report_type && String(msg.report_type).trim()) ? String(msg.report_type).trim() : \"report\";\n\nmsg.chartFile = `/tmp/xovis_chart_${rt}_${ts}_${rnd}.json`;\nmsg.filename = msg.chartFile;  // Write File node nutzt msg.filename\nmsg.payload = json;            // Write File node schreibt msg.payload\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1150,
+        "y": 1360,
+        "wires": [
+            [
+                "68690fd0ce0201bd"
+            ]
+        ]
+    },
+    {
+        "id": "68690fd0ce0201bd",
+        "type": "file",
+        "z": "b7e2dbf3f8a0d2d1",
+        "name": "",
+        "filename": "filename",
+        "filenameType": "msg",
+        "appendNewline": true,
+        "createDir": false,
+        "overwriteFile": "true",
+        "encoding": "utf8",
+        "x": 1480,
+        "y": 1260,
+        "wires": [
+            [
+                "fdab4e59fac547fe"
+            ]
+        ]
+    },
+    {
+        "id": "fdab4e59fac547fe",
+        "type": "function",
+        "z": "b7e2dbf3f8a0d2d1",
+        "name": "function 13",
+        "func": "msg.payload = msg.chartFile;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1550,
+        "y": 1180,
+        "wires": [
+            [
+                "f4f2e7bcc5f06997"
+            ]
+        ]
+    },
+    {
+        "id": "f4f2e7bcc5f06997",
+        "type": "exec",
+        "z": "b7e2dbf3f8a0d2d1",
+        "command": "node /root/.node-red/render_chart_node_rev2.js",
+        "addpay": "payload",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "45",
+        "winHide": false,
+        "oldrc": false,
+        "name": "",
+        "x": 1460,
+        "y": 1060,
+        "wires": [
+            [
+                "dfc1af98c04ab1df"
+            ],
+            [
+                "c3e89b5f170f1563"
+            ],
+            [
+                "c2e7227d68de8e3e"
+            ]
+        ]
+    },
+    {
+        "id": "dfc1af98c04ab1df",
+        "type": "function",
+        "z": "b7e2dbf3f8a0d2d1",
+        "name": "Build final email",
+        "func": "// Build email (ohne Join) – Alle Sensoren (fw) in EINEM Diagramm\n// Input: msg.payload = base64 PNG (stdout vom Exec)\n\nconst b64 = String(msg.payload || \"\").trim();\nif (!b64 || b64.length < 200) {\n  node.warn(\"No/too short base64 from exec - no email sent\");\n  return null;\n}\n\nconst pngBuf = Buffer.from(b64, \"base64\");\n\n// Subject optional vom Inject\nconst subject = msg.report_subject || msg.topic || \"XOVIS Report (alle Sensoren fw)\";\n\nmsg.to = msg.to || \"dein.mail@domain.tld\";\nmsg.topic = subject;\n\n// HTML\nmsg.payload = `\n  <h2>${subject}</h2>\n  <p>Alle Sensoren – nur <b>fw</b></p>\n  <img src=\"cid:xovis_all_fw.png\" style=\"max-width:1100px;width:100%;height:auto;\">\n`;\n\n// Inline Attachment\nmsg.attachments = [{\n  filename: \"xovis_all_fw.png\",\n  content: pngBuf,\n  contentType: \"image/png\",\n  cid: \"xovis_all_fw.png\"\n}];\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1540,
+        "y": 1000,
+        "wires": [
+            [
+                "79348d6c5ef69f40"
+            ]
+        ]
+    },
+    {
+        "id": "74cb9fd47fbdbfdb",
+        "type": "inject",
+        "z": "b7e2dbf3f8a0d2d1",
+        "name": "1 Tag",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 570,
+        "y": 1180,
+        "wires": [
+            [
+                "865c1a637ce4e3a9"
+            ]
+        ]
+    },
+    {
+        "id": "865c1a637ce4e3a9",
+        "type": "function",
+        "z": "b7e2dbf3f8a0d2d1",
+        "name": "function 14",
+        "func": "msg.report_type = \"day_hours\";          // 24 Punkte\nmsg.report_subject = \"XOVIS Tagesverlauf (heute)\";\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 730,
+        "y": 1180,
+        "wires": [
+            [
+                "3da18c2aba8a788e"
+            ]
+        ]
+    },
+    {
+        "id": "c3e89b5f170f1563",
+        "type": "debug",
+        "z": "b7e2dbf3f8a0d2d1",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1740,
+        "y": 1100,
+        "wires": []
+    },
+    {
+        "id": "c2e7227d68de8e3e",
+        "type": "debug",
+        "z": "b7e2dbf3f8a0d2d1",
+        "name": "debug 3",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1740,
+        "y": 1160,
+        "wires": []
     }
 ]
