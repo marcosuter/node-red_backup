@@ -2311,7 +2311,7 @@
         "type": "debug",
         "z": "975e98f6.cb0d18",
         "name": "",
-        "active": false,
+        "active": true,
         "console": "false",
         "complete": "false",
         "x": 859,
@@ -4601,11 +4601,11 @@
         "mydb": "19ca401d8e6b23b0",
         "name": "",
         "x": 710,
-        "y": 140,
+        "y": 120,
         "wires": [
             [
-                "7b6b24d0a9c74b33",
-                "48aa2881f89baca4"
+                "48aa2881f89baca4",
+                "5fd22c446c066fc0"
             ]
         ]
     },
@@ -4623,18 +4623,19 @@
                 "vt": "str"
             }
         ],
-        "repeat": "300",
+        "repeat": "600",
         "crontab": "",
         "once": false,
         "onceDelay": 2,
         "topic": "",
-        "payload": "",
+        "payload": "iso",
         "payloadType": "date",
         "x": 130,
         "y": 740,
         "wires": [
             [
-                "817a7a44256d86fb"
+                "817a7a44256d86fb",
+                "46a96016b48f7ee5"
             ]
         ]
     },
@@ -4643,7 +4644,7 @@
         "type": "function",
         "z": "b7e2dbf3f8a0d2d1",
         "name": "Prepare SELECT last bin (sensor/res=5)",
-        "func": "msg.xovis = msg.payload;              // Target-Objekt vom Split\nmsg.sensor_id = msg.xovis.sensor_id;\nmsg.sensor_name = msg.xovis.sensor_name;\nmsg.resolution_min = 1;               // oder 5\n\nmsg.topic = \"SELECT MAX(bin_begin_utc) AS last_bin FROM xovis_counts_wide WHERE sensor_id = ? AND resolution_min = ?\";\nmsg.payload = [msg.sensor_id, msg.resolution_min];\n\nreturn msg;\n",
+        "func": "msg.xovis = msg.payload;              // Target-Objekt vom Split\nmsg.sensor_id = msg.xovis.sensor_id;\nmsg.sensor_name = msg.xovis.sensor_name;\nmsg.resolution_min = 1;               // oder 5\n\nmsg.topic = \"SELECT '2026-02-08 00:00:00' AS last_bin FROM xovis_counts_wide WHERE sensor_id = ? AND resolution_min = ?\";\n//msg.topic = \"SELECT MAX(bin_begin_utc) AS last_bin FROM xovis_counts_wide WHERE sensor_id = ? AND resolution_min = ?\";\nmsg.payload = [msg.sensor_id, msg.resolution_min];\n\nreturn msg;\n",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -4663,19 +4664,17 @@
         "type": "function",
         "z": "b7e2dbf3f8a0d2d1",
         "name": "Build XOVIS request (incremental 1min)",
-        "func": "const BASE_URL = msg.xovis.base_url;\n\n// wichtig: MIT Slash vor der ID\nconst PATH = `/api/v5/singlesensor/data/history/logics/${msg.xovis.logic_id}`;\n\n\nconst BUCKET_MIN = 1;\nconst BUCKET_MS = BUCKET_MIN * 60 * 1000;\n\n// last_bin kommt aus MariaDB: msg.payload = [ { last_bin: ... } ]\nlet lastBin = null;\nif (Array.isArray(msg.payload) && msg.payload[0] && msg.payload[0].last_bin) {\n  lastBin = msg.payload[0].last_bin;\n}\n\nlet lastBinMs = null;\nif (lastBin) {\n  if (lastBin instanceof Date) lastBinMs = lastBin.getTime();\n  else lastBinMs = Date.parse(String(lastBin));\n}\n\n// end = jetzt, auf 5min abgerundet\nconst now = Date.now();\nconst endMsAligned = now - (now % BUCKET_MS);\n\n// begin = lastBin + 5min, sonst initial (2h zurück, sauber gerundet)\nlet beginMs;\nif (lastBinMs) {\n  beginMs = lastBinMs + BUCKET_MS;\n} else {\n  const initial = now - 2 * 3600000;\n  beginMs = initial - (initial % BUCKET_MS);\n}\n\n// nichts Neues\nif (beginMs >= endMsAligned) {\n  node.status({fill:\"green\",shape:\"dot\",text:\"no new 5-min bins\"});\n  return null;\n}\n\nfunction toQuery(obj) {\n  return Object.keys(obj)\n    .filter(k => obj[k] !== undefined && obj[k] !== null)\n    .map(k => encodeURIComponent(k) + \"=\" + encodeURIComponent(String(obj[k])))\n    .join(\"&\");\n}\n\nconst params = {\n  begin: beginMs,\n  end: endMsAligned,\n  resolution_min: BUCKET_MIN,\n  time_format: \"UNIX_TIME_MS\",\n  include_empty: true,\n  pretty: false\n};\n\nmsg.method = \"GET\";\nmsg.url = `${BASE_URL}${PATH}?${toQuery(params)}`;\nmsg.headers = { Accept: \"application/json\" };\n\n// Metadaten für Downstream\nmsg.resolution_min = BUCKET_MIN;\n\nmsg.payload = null;\nnode.status({fill:\"blue\",shape:\"dot\",text:`fetch ${new Date(beginMs).toISOString()}..${new Date(endMsAligned).toISOString()}`});\nreturn msg;",
+        "func": "const BASE_URL = msg.xovis.base_url;\n\n// wichtig: MIT Slash vor der ID\nconst PATH = `/api/v5/singlesensor/data/history/logics/${msg.xovis.logic_id}`;\n\n\nconst BUCKET_MIN = 1;\nconst BUCKET_MS = BUCKET_MIN * 60 * 1000;\n\n// last_bin kommt aus MariaDB: msg.payload = [ { last_bin: ... } ]\nlet lastBin = null;\nif (Array.isArray(msg.payload) && msg.payload[0] && msg.payload[0].last_bin) {\n  lastBin = msg.payload[0].last_bin;\n}\n\nlet lastBinMs = null;\nif (lastBin) {\n  if (lastBin instanceof Date) lastBinMs = lastBin.getTime();\n  else lastBinMs = Date.parse(String(lastBin));\n}\n\n// end = jetzt, auf 5min abgerundet\n// const now = Date.now();\nconst now = new Date(2026, 1, 10, 0, 0, 0, 0).getTime();\nconst endMsAligned = now - (now % BUCKET_MS);\n\n// begin = lastBin + 5min, sonst initial (2h zurück, sauber gerundet)\nlet beginMs;\nif (lastBinMs) {\n  beginMs = lastBinMs + BUCKET_MS;\n} else {\n  const initial = now - 2 * 3600000;\n  beginMs = initial - (initial % BUCKET_MS);\n}\n\n// nichts Neues\nif (beginMs >= endMsAligned) {\n  node.status({fill:\"green\",shape:\"dot\",text:\"no new 5-min bins\"});\n  return null;\n}\n\nfunction toQuery(obj) {\n  return Object.keys(obj)\n    .filter(k => obj[k] !== undefined && obj[k] !== null)\n    .map(k => encodeURIComponent(k) + \"=\" + encodeURIComponent(String(obj[k])))\n    .join(\"&\");\n}\n\nconst params = {\n  begin: beginMs,\n  end: endMsAligned,\n  resolution_min: BUCKET_MIN,\n  time_format: \"UNIX_TIME_MS\",\n  include_empty: true,\n  pretty: false\n};\n\nmsg.method = \"GET\";\nmsg.url = `${BASE_URL}${PATH}?${toQuery(params)}`;\nmsg.headers = { Accept: \"application/json\" };\n\n// Metadaten für Downstream\nmsg.resolution_min = BUCKET_MIN;\n\nmsg.payload = null;\nnode.status({fill:\"blue\",shape:\"dot\",text:`fetch ${new Date(beginMs).toISOString()}..${new Date(endMsAligned).toISOString()}`});\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 980,
-        "y": 140,
+        "x": 1080,
+        "y": 180,
         "wires": [
-            [
-                "35c9fcb9a8d4c6a1"
-            ]
+            []
         ]
     },
     {
@@ -4738,7 +4737,7 @@
         "type": "debug",
         "z": "b7e2dbf3f8a0d2d1",
         "name": "NOT JSON (HTML/401/redirect) msg",
-        "active": true,
+        "active": false,
         "tosidebar": true,
         "console": false,
         "tostatus": false,
@@ -4886,8 +4885,8 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 860,
-        "y": 80,
+        "x": 880,
+        "y": 60,
         "wires": []
     },
     {
@@ -5735,5 +5734,70 @@
                 "3da18c2aba8a788e"
             ]
         ]
+    },
+    {
+        "id": "b780945e76be6d69",
+        "type": "inject",
+        "z": "b7e2dbf3f8a0d2d1",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "[{\"last_bin\":\"2025-01-01T00:00:00.000Z\"}]",
+        "payloadType": "jsonata",
+        "x": 410,
+        "y": 60,
+        "wires": [
+            [
+                "48aa2881f89baca4"
+            ]
+        ]
+    },
+    {
+        "id": "5fd22c446c066fc0",
+        "type": "function",
+        "z": "b7e2dbf3f8a0d2d1",
+        "name": "function 17",
+        "func": "const BASE_URL = msg.xovis.base_url;\n\n// wichtig: MIT Slash vor der ID\nconst PATH = `/api/v5/singlesensor/data/history/logics/${msg.xovis.logic_id}`;\n\nconst BUCKET_MIN = 1;\n\n// Starttag (erster abgefragter Tag): 20.02.2026 00:00:00\n// Endtag (letzter abgefragter Tag): 01.01.2026 00:00:00\nconst START_DAY_MS = new Date(2023, 5, 1, 0, 0, 0, 0).getTime(); // Monat 1 = Februar\nconst STOP_DAY_MS  = new Date(2023, 0, 1,  0, 0, 0, 0).getTime(); // Monat 0 = Januar\n\n// pro Sensor eigenen Cursor merken\nconst sensorKey = `cursor_${msg.xovis.sensor_id}`;\n\n// Cursor aus Node-Context holen, sonst mit Starttag initialisieren\nlet dayStartMs = context.get(sensorKey);\nif (dayStartMs === undefined || dayStartMs === null) {\n  dayStartMs = START_DAY_MS;\n}\n\n// Wenn wir vor dem Stop-Tag sind: nichts mehr tun\nif (dayStartMs < STOP_DAY_MS) {\n  node.status({\n    fill: \"green\",\n    shape: \"dot\",\n    text: `finished (before ${new Date(STOP_DAY_MS).toISOString().slice(0,10)})`\n  });\n  return null;\n}\n\n// Genau ein ganzer Tag:\n// begin = 00:00:00.000 des Tages\n// end   = 00:00:00.000 des Folgetages\nconst beginMs = dayStartMs;\nconst endMs   = dayStartMs + 24 * 60 * 60 * 1000;\n\nfunction toQuery(obj) {\n  return Object.keys(obj)\n    .filter(k => obj[k] !== undefined && obj[k] !== null)\n    .map(k => encodeURIComponent(k) + \"=\" + encodeURIComponent(String(obj[k])))\n    .join(\"&\");\n}\n\nconst params = {\n  begin: beginMs,\n  end: endMs,\n  resolution_min: BUCKET_MIN,\n  time_format: \"UNIX_TIME_MS\",\n  include_empty: true,\n  pretty: false\n};\n\nmsg.method = \"GET\";\nmsg.url = `${BASE_URL}${PATH}?${toQuery(params)}`;\nmsg.headers = { Accept: \"application/json\" };\n\n// Metadaten für Downstream\nmsg.resolution_min = BUCKET_MIN;\n\n// Für Info / Debug\nmsg.backfill_day = new Date(beginMs).toISOString().slice(0, 10);\n\n// Nächsten Lauf vorbereiten: einen Tag zurück\ncontext.set(sensorKey, dayStartMs - 24 * 60 * 60 * 1000);\n\nmsg.payload = null;\n\nnode.status({\n  fill: \"blue\",\n  shape: \"dot\",\n  text: `fetch full day ${msg.backfill_day}`\n});\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1130,
+        "y": 60,
+        "wires": [
+            [
+                "35c9fcb9a8d4c6a1"
+            ]
+        ]
+    },
+    {
+        "id": "46a96016b48f7ee5",
+        "type": "debug",
+        "z": "b7e2dbf3f8a0d2d1",
+        "name": "debug 4",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 580,
+        "y": 760,
+        "wires": []
     }
 ]
