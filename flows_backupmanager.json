@@ -310,27 +310,29 @@
         "height": 1
     },
     {
-        "id": "19ca401d8e6b23b0",
+        "id": "59f15f0b8bc7c568",
         "type": "MySQLdatabase",
-        "name": "",
+        "name": "192.168.16.35 Zahnradstrasse",
         "host": "192.168.16.35",
         "port": "3306",
-        "db": "XOVIS",
+        "db": "Zahnradstrasse",
         "tz": "",
-        "charset": "UTF8"
+        "charset": "UTF8MB4"
     },
     {
         "id": "29cd36a9.74b33a",
         "type": "file in",
         "z": "f26a56d3.358178",
         "name": "File lesen",
-        "filename": "",
-        "format": "utf8",
-        "x": 1260,
-        "y": 940,
+        "filename": "filename",
+        "filenameType": "msg",
+        "format": "",
+        "allProps": false,
+        "x": 1200,
+        "y": 1000,
         "wires": [
             [
-                "373b94e6.6b71dc"
+                "549b3efe3c4b3238"
             ]
         ]
     },
@@ -339,14 +341,18 @@
         "type": "function",
         "z": "f26a56d3.358178",
         "name": "setze filename Attribut",
-        "func": "msg.filename=msg.path+msg.array;\nreturn msg;",
+        "func": "const dateiname = String(msg.files);\n\nif (!dateiname || dateiname === \"undefined\") {\n    node.error(\"Kein gültiger Dateiname erhalten\", msg);\n    return null;\n}\n\nmsg.filename = msg.path + dateiname;\n\nmsg.sourceFile = msg.filename;\nmsg.sourcePath = msg.path;\nmsg.sourceFilename = dateiname;\n\n/*\n * Erwartetes Dateimuster:\n * AYYMMDD...\n *\n * Beispiele:\n * A140324... → 2014\n * A240724... → 2024\n * A260724... → 2026\n */\nconst match = dateiname.match(/^A(\\d{2})(\\d{2})(\\d{2})/i);\n\nif (!match) {\n    node.warn(\n        \"Jahr konnte aus Dateiname nicht erkannt werden: \" +\n        dateiname\n    );\n\n    msg.destinationPath = msg.path.replace(\n        /\\/tmp\\/?$/,\n        \"/verarbeitet/\"\n    );\n} else {\n    const jahr = \"20\" + match[1];\n\n    msg.destinationPath = msg.path.replace(\n        /\\/tmp\\/?$/,\n        \"/verarbeitet/y\" + jahr + \"/\"\n    );\n}\n\nmsg.destinationFilename = dateiname;\n\n/*\n * msg.parts stammt vom Datei-Splitter und wird danach\n * nicht mehr benötigt.\n */\ndelete msg.parts;\n\nreturn msg;",
         "outputs": 1,
+        "timeout": "",
         "noerr": 0,
-        "x": 1060,
-        "y": 940,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 960,
+        "y": 860,
         "wires": [
             [
-                "29cd36a9.74b33a"
+                "dc83fca5.348e8"
             ]
         ]
     },
@@ -358,11 +364,15 @@
         "sep": ";",
         "hdrin": "",
         "hdrout": "",
-        "multi": "one",
+        "multi": "mult",
         "ret": "\\n",
         "temp": "",
-        "x": 540,
-        "y": 980,
+        "skip": 0,
+        "strings": true,
+        "include_empty_strings": false,
+        "include_null_values": false,
+        "x": 400,
+        "y": 1320,
         "wires": [
             [
                 "85d2b03e.d0e0c"
@@ -374,14 +384,18 @@
         "type": "function",
         "z": "f26a56d3.358178",
         "name": "<< & >> löschen",
-        "func": "try{\n    msg.payload.col2 = msg.payload.col2.replace(\">> \",\"\")\n}\ncatch(e){}\ntry{\nmsg.payload.col3 = msg.payload.col3.replace(\"<< \",\"\")\n}\ncatch(e){}\nreturn msg;",
+        "func": "if (!Array.isArray(msg.payload)) {\n    node.error(\"CSV-Payload ist kein Array\", msg);\n    return null;\n}\n\nfor (const datensatz of msg.payload) {\n    if (!datensatz || typeof datensatz !== \"object\") {\n        continue;\n    }\n\n    if (typeof datensatz.col2 === \"string\") {\n        datensatz.col2 = datensatz.col2.replace(/^>>\\s*/, \"\");\n    }\n\n    if (typeof datensatz.col3 === \"string\") {\n        datensatz.col3 = datensatz.col3.replace(/^<<\\s*/, \"\");\n    }\n}\n\nreturn msg;",
         "outputs": 1,
+        "timeout": "",
         "noerr": 0,
-        "x": 720,
-        "y": 980,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 1180,
         "wires": [
             [
-                "b4a1a679.e598f8"
+                "2a8c5b3ecd1cee85"
             ]
         ]
     },
@@ -392,9 +406,13 @@
         "name": "Verzeichnis definieren ZHR",
         "func": "msg.path=\"/mnt/backup/Anlagen/zhr/tmp/\"\nmsg.table=\"zhrtmp\"\nreturn msg;",
         "outputs": 1,
+        "timeout": "",
         "noerr": 0,
-        "x": 220,
-        "y": 940,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 160,
+        "y": 1000,
         "wires": [
             [
                 "d7e8e41f.761648"
@@ -513,22 +531,6 @@
         "x": 730,
         "y": 620,
         "wires": []
-    },
-    {
-        "id": "5b3d2981.b0c5e8",
-        "type": "function",
-        "z": "f26a56d3.358178",
-        "name": "Verzeichnis definieren HRD",
-        "func": "msg.path=\"/mnt/backup/Anlagen/hrd/tmp/\"\nmsg.table=\"hrdtmp\"\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "x": 220,
-        "y": 979,
-        "wires": [
-            [
-                "d7e8e41f.761648"
-            ]
-        ]
     },
     {
         "id": "bb68f674.424058",
@@ -764,8 +766,8 @@
         "links": [
             "2776dc4f.ad18d4"
         ],
-        "x": 50,
-        "y": 936,
+        "x": 205,
+        "y": 760,
         "wires": [
             []
         ]
@@ -778,8 +780,8 @@
         "links": [
             "4b5d48e3.950a38"
         ],
-        "x": 53,
-        "y": 994,
+        "x": 265,
+        "y": 740,
         "wires": [
             []
         ]
@@ -789,14 +791,26 @@
         "type": "inject",
         "z": "f26a56d3.358178",
         "name": "",
+        "props": [
+            {
+                "p": "payload",
+                "v": "",
+                "vt": "date"
+            },
+            {
+                "p": "topic",
+                "v": "",
+                "vt": "str"
+            }
+        ],
         "repeat": "",
         "crontab": "",
         "once": false,
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 160,
-        "y": 860,
+        "x": 100,
+        "y": 920,
         "wires": [
             [
                 "555cfd8.dded204"
@@ -816,39 +830,6 @@
         "wires": []
     },
     {
-        "id": "5851eb8c.76c194",
-        "type": "join",
-        "z": "f26a56d3.358178",
-        "name": "",
-        "mode": "custom",
-        "build": "array",
-        "property": "payload",
-        "propertyType": "msg",
-        "key": "topic",
-        "joiner": "\\n",
-        "timeout": "20",
-        "count": "",
-        "x": 1050,
-        "y": 1080,
-        "wires": [
-            [
-                "97dab9cb.f89a08"
-            ]
-        ]
-    },
-    {
-        "id": "97dab9cb.f89a08",
-        "type": "debug",
-        "z": "f26a56d3.358178",
-        "name": "",
-        "active": true,
-        "console": "false",
-        "complete": "true",
-        "x": 1210,
-        "y": 1080,
-        "wires": []
-    },
-    {
         "id": "dc83fca5.348e8",
         "type": "delay",
         "z": "f26a56d3.358178",
@@ -857,37 +838,19 @@
         "timeout": "5",
         "timeoutUnits": "seconds",
         "rate": "1",
-        "nbRateUnits": "1",
-        "rateUnits": "minute",
+        "nbRateUnits": "5",
+        "rateUnits": "second",
         "randomFirst": "1",
         "randomLast": "5",
         "randomUnits": "seconds",
         "drop": false,
+        "allowrate": false,
         "outputs": 1,
-        "x": 890,
-        "y": 940,
+        "x": 830,
+        "y": 1000,
         "wires": [
             [
-                "108287bd.2e6808"
-            ]
-        ]
-    },
-    {
-        "id": "2f0e4dd6.90c4c2",
-        "type": "inject",
-        "z": "f26a56d3.358178",
-        "name": "",
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 120,
-        "y": 1080,
-        "wires": [
-            [
-                "5b3d2981.b0c5e8"
+                "29cd36a9.74b33a"
             ]
         ]
     },
@@ -1460,56 +1423,6 @@
         "wires": []
     },
     {
-        "id": "b4a1a679.e598f8",
-        "type": "moment",
-        "z": "f26a56d3.358178",
-        "name": "Kommt Datum formatieren",
-        "topic": "",
-        "input": "payload.col2",
-        "inputType": "msg",
-        "inTz": "Europe/Zurich",
-        "adjAmount": 0,
-        "adjType": "hours",
-        "adjDir": "add",
-        "format": "",
-        "locale": "de_CH",
-        "output": "payload.col2",
-        "outputType": "msg",
-        "outTz": "Europe/Zurich",
-        "x": 940,
-        "y": 980,
-        "wires": [
-            [
-                "a2762970.95f018"
-            ]
-        ]
-    },
-    {
-        "id": "a2762970.95f018",
-        "type": "moment",
-        "z": "f26a56d3.358178",
-        "name": "Geht Datum formatieren",
-        "topic": "",
-        "input": "payload.col3",
-        "inputType": "msg",
-        "inTz": "Europe/Zurich",
-        "adjAmount": 0,
-        "adjType": "hours",
-        "adjDir": "add",
-        "format": "",
-        "locale": "de_CH",
-        "output": "payload.col3",
-        "outputType": "msg",
-        "outTz": "Europe/Zurich",
-        "x": 1190,
-        "y": 980,
-        "wires": [
-            [
-                "5851eb8c.76c194"
-            ]
-        ]
-    },
-    {
         "id": "57cbef5f.74d7d",
         "type": "moment",
         "z": "f26a56d3.358178",
@@ -1588,11 +1501,11 @@
         "z": "f26a56d3.358178",
         "name": "Loope über Files",
         "property": "files",
-        "x": 730,
-        "y": 940,
+        "x": 670,
+        "y": 900,
         "wires": [
             [
-                "dc83fca5.348e8"
+                "108287bd.2e6808"
             ],
             []
         ]
@@ -1608,11 +1521,143 @@
         "filterType": "str",
         "dir": "files",
         "dirType": "msg",
-        "x": 500,
-        "y": 940,
+        "x": 440,
+        "y": 1000,
         "wires": [
             [
-                "3c4e30b0.06e65"
+                "f13b68da1983e7f2"
+            ]
+        ]
+    },
+    {
+        "id": "2a8c5b3ecd1cee85",
+        "type": "function",
+        "z": "f26a56d3.358178",
+        "name": "SQL INSERT vorbereiten",
+        "func": "/*\n * CSV-Datensätze gesammelt in MariaDB einfügen.\n *\n * Erwartet:\n *   msg.payload = Array mit Objekten:\n *   {\n *       col1: Meldename,\n *       col2: Beginn als ISO-Zeit,\n *       col3: Ende als ISO-Zeit,\n *       col5: Beschreibung\n *   }\n *\n *   msg.table = \"zhrtmp\" oder \"hrdtmp\"\n */\n\nconst erlaubteTabellen = [\n    \"zhrtmp\",\n    \"hrdtmp\"\n];\n\nif (!erlaubteTabellen.includes(msg.table)) {\n    node.error(\n        \"Ungültige oder fehlende Zieltabelle: \" + msg.table,\n        msg\n    );\n    return null;\n}\n\nif (!Array.isArray(msg.payload) || msg.payload.length === 0) {\n    node.warn(\"Keine Datensätze zum Importieren\");\n    return null;\n}\n\n\n/*\n * ISO-Zeitstempel für MariaDB DATETIME(3) formatieren.\n *\n * Beispiel:\n * 2026-07-23T21:53:18.000Z\n *\n * wird zu:\n * 2026-07-23 21:53:18.000\n *\n * Die Zeit bleibt UTC.\n */\nfunction datumFuerMariaDb(value) {\n    if (!value) {\n        return null;\n    }\n\n    const text = String(value).trim();\n\n    /*\n     * Format 1:\n     * DD.MM.YYYY HH:mm:ss\n     */\n    let match = text.match(\n        /^(\\d{2})\\.(\\d{2})\\.(\\d{4})\\s+(\\d{2}):(\\d{2}):(\\d{2})(?:\\.(\\d{1,3}))?$/\n    );\n\n    if (match) {\n        const tag = Number(match[1]);\n        const monat = Number(match[2]);\n        const jahr = Number(match[3]);\n        const stunde = Number(match[4]);\n        const minute = Number(match[5]);\n        const sekunde = Number(match[6]);\n        const millisekunden = match[7]\n            ? match[7].padEnd(3, \"0\")\n            : \"000\";\n\n        if (\n            monat < 1 || monat > 12 ||\n            tag < 1 || tag > 31 ||\n            stunde > 23 ||\n            minute > 59 ||\n            sekunde > 59\n        ) {\n            return null;\n        }\n\n        return (\n            String(jahr).padStart(4, \"0\") + \"-\" +\n            String(monat).padStart(2, \"0\") + \"-\" +\n            String(tag).padStart(2, \"0\") + \" \" +\n            String(stunde).padStart(2, \"0\") + \":\" +\n            String(minute).padStart(2, \"0\") + \":\" +\n            String(sekunde).padStart(2, \"0\") + \".\" +\n            millisekunden\n        );\n    }\n\n    /*\n     * Format 2:\n     * ISO-Zeitstempel\n     */\n    const datum = new Date(text);\n\n    if (!Number.isNaN(datum.getTime())) {\n        return datum\n            .toISOString()\n            .replace(\"T\", \" \")\n            .replace(\"Z\", \"\");\n    }\n\n    return null;\n}\n\n\nconst platzhalter = [];\nconst werte = [];\n\nfor (const datensatz of msg.payload) {\n\n    if (!datensatz || !datensatz.col1) {\n        node.warn(\"Datensatz ohne col1 übersprungen\");\n        continue;\n    }\n\n    const beginn = datumFuerMariaDb(datensatz.col2);\n    const ende = datumFuerMariaDb(datensatz.col3);\n\n    if (!beginn) {\n        node.warn(\n            \"Datensatz mit ungültigem Beginn übersprungen: \" +\n            JSON.stringify(datensatz)\n        );\n        continue;\n    }\n\n    platzhalter.push(\"(?, ?, ?, ?, ?)\");\n\n    werte.push(\n        String(datensatz.col1),\n        beginn,\n        ende,\n        datensatz.col5\n            ? String(datensatz.col5)\n            : null,\n        msg.sourceFile\n            ? String(msg.sourceFile)\n            : null\n    );\n}\n\n\nif (platzhalter.length === 0) {\n    node.warn(\"Keine gültigen Datensätze vorhanden\");\n    return null;\n}\n\n\nmsg.topic = `\n    INSERT IGNORE INTO ${msg.table}\n    (\n        meldung,\n        beginn_utc,\n        ende_utc,\n        beschreibung,\n        quelldatei\n    )\n    VALUES\n        ${platzhalter.join(\", \")}\n`;\n\nmsg.payload = werte;\n\n/*\n * Für den Debug-Node nach dem Datenbank-Node.\n */\nmsg.import_anzahl = platzhalter.length;\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 830,
+        "y": 1320,
+        "wires": [
+            [
+                "070506121f2f112d"
+            ]
+        ]
+    },
+    {
+        "id": "070506121f2f112d",
+        "type": "mysql",
+        "z": "f26a56d3.358178",
+        "mydb": "59f15f0b8bc7c568",
+        "name": "",
+        "x": 1130,
+        "y": 1320,
+        "wires": [
+            [
+                "990c2f418e0eaeb7"
+            ]
+        ]
+    },
+    {
+        "id": "549b3efe3c4b3238",
+        "type": "function",
+        "z": "f26a56d3.358178",
+        "name": "Encoding",
+        "func": "if (!Buffer.isBuffer(msg.payload)) {\n    node.warn(\n        \"Datei konnte nicht als Buffer gelesen werden: \" +\n        String(msg.filename || \"\")\n    );\n    return null;\n}\n\nmsg.payload = msg.payload.toString(\"latin1\");\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 320,
+        "y": 1200,
+        "wires": [
+            [
+                "373b94e6.6b71dc"
+            ]
+        ]
+    },
+    {
+        "id": "990c2f418e0eaeb7",
+        "type": "function",
+        "z": "f26a56d3.358178",
+        "name": "Verschiebepfade bilden",
+        "func": "const erforderlicheFelder = [\n    \"sourcePath\",\n    \"sourceFilename\",\n    \"destinationPath\",\n    \"destinationFilename\"\n];\n\nfor (const feld of erforderlicheFelder) {\n    if (!msg[feld]) {\n        node.error(\n            \"Pfadangabe fehlt: msg.\" + feld,\n            msg\n        );\n        return null;\n    }\n}\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 950,
+        "y": 1400,
+        "wires": [
+            [
+                "d4185e88339d3581",
+                "d3158f64f6411cdc"
+            ]
+        ]
+    },
+    {
+        "id": "d4185e88339d3581",
+        "type": "fs-ops-move",
+        "z": "f26a56d3.358178",
+        "name": "",
+        "sourcePath": "sourcePath",
+        "sourcePathType": "msg",
+        "sourceFilename": "sourceFilename",
+        "sourceFilenameType": "msg",
+        "destPath": "destinationPath",
+        "destPathType": "msg",
+        "destFilename": "destinationFilename",
+        "destFilenameType": "msg",
+        "link": false,
+        "x": 1160,
+        "y": 1440,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "d3158f64f6411cdc",
+        "type": "debug",
+        "z": "f26a56d3.358178",
+        "name": "debug 1",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 920,
+        "y": 1520,
+        "wires": []
+    },
+    {
+        "id": "f13b68da1983e7f2",
+        "type": "split",
+        "z": "f26a56d3.358178",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "property": "files",
+        "x": 590,
+        "y": 800,
+        "wires": [
+            [
+                "108287bd.2e6808"
             ]
         ]
     },
@@ -2105,10 +2150,8 @@
             "29116e6f.544842",
             "2a4dff2a.64e23",
             "72669443.899c9c",
-            "c331bbcb.876f18",
             "ed304250.a0d648",
-            "f4dd89ff.ae39f8",
-            "79348d6c5ef69f40"
+            "f4dd89ff.ae39f8"
         ],
         "x": 780,
         "y": 60,
